@@ -1,0 +1,37 @@
+name: ci-deploy
+on: [push]
+
+jobs:
+  docker-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push b-rs
+        uses: docker/build-push-action@v5
+        with:
+          context: ./b-rs
+          file: ./b-rs/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/b-rs:latest
+
+      - name: Build and Push ld-tr
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ld-tr
+          file: ./ld-tr/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ld-tr:latest
