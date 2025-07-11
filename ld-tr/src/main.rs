@@ -5,7 +5,7 @@ mod info;
 
 use crate::check_health::start_health_checker;
 use crate::endpoint::{proxy_payment, proxy_payments_summary};
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpServer, web};
 use dotenvy::dotenv;
 
 #[actix_web::main]
@@ -15,8 +15,8 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(|| {
         App::new()
-            .service(proxy_payment)
             .service(proxy_payments_summary)
+            .route("/{tail:.*}", web::to(proxy_payment))
     })
     .bind(("127.0.0.1", 8081))?
     .run()
