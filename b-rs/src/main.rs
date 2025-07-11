@@ -1,6 +1,16 @@
-mod payment;
-mod endpoint;
+use crate::endpoint::{get_payments_summary, post_payment};
+use actix_web::{App, HttpServer};
+use dotenvy::dotenv;
 
-fn main() {
-    println!("Hello, world!");
+mod endpoint;
+mod payment;
+mod use_case;
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    dotenv().ok();
+    HttpServer::new(|| App::new().service(post_payment).service(get_payments_summary))
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await
 }
