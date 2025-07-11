@@ -7,25 +7,8 @@ pub struct PaymentRequest {
     #[serde(rename = "correlationId")]
     pub correlation_id: Uuid,
     pub amount: f64,
-}
-
-#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
-pub struct PaymentResponse {
-    #[serde(rename = "correlationId")]
-    pub correlation_id: Uuid,
-    pub amount: f64,
     #[serde(rename = "requestedAt")]
     pub requested_at: DateTime<Utc>,
-}
-
-impl PaymentResponse {
-    pub fn new(correlation_id: Uuid, amount: f64) -> Self {
-        Self {
-            correlation_id,
-            amount,
-            requested_at: Utc::now(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
