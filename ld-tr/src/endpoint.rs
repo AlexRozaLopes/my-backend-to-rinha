@@ -1,10 +1,15 @@
-use actix_web::{post, HttpResponse, Responder};
-use actix_web::web::Json;
-use crate::payment::PaymentRequest;
+use actix_web::{HttpRequest, HttpResponse, Responder, post, web, get};
 
 #[post("/payments")]
-pub async fn post_payment(req_payment: Json<PaymentRequest>) -> impl Responder {
-    println!("{:?}", req_payment.clone());
+pub async fn proxy_payment(req: HttpRequest, body: web::Bytes) -> impl Responder {
+    println!("{:?}", req);
+    println!("{:?}", body);
     HttpResponse::Ok()
 }
 
+#[get("/payments-summary")]
+pub async fn proxy_payments_summary(req: HttpRequest, body: web::Bytes) -> impl Responder {
+    println!("{:?}", req);
+    println!("{:?}", body);
+    HttpResponse::Ok()
+}
