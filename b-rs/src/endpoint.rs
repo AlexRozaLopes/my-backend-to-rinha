@@ -18,6 +18,5 @@ pub async fn get_payments_summary(path_params: Option<Query<SummaryQuery>>) -> i
             println!("{:?}",params);
             summary_payment(params.into())
         }
-    }.await;
-    HttpResponse::Ok()
+    }.await
 }
