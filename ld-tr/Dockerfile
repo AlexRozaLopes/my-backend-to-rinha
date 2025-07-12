@@ -33,8 +33,7 @@ WORKDIR /app
 # Copiar o binário construído dinamicamente
 COPY --from=builder /app/app_bin .
 
-EXPOSE 8080
-
-ENV DATABASE_URL=postgres://alex:alex@localhost/postgres
+ENV PAYMENT_PROCESSOR_DEFAULT=http://localhost:8001
+ENV PAYMENT_PROCESSOR_FALLBACK=http://localhost:8002
 
 CMD ["./app_bin"]

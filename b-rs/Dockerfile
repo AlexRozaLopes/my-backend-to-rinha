@@ -33,9 +33,6 @@ WORKDIR /app
 # Copiar o binário construído dinamicamente
 COPY --from=builder /app/app_bin .
 
-EXPOSE 8080
-
 ENV LOAD_BALANCE=http://127.0.0.1:8081
-ENV TOKEN_ADMIN=123
 
 CMD ["./app_bin"]
