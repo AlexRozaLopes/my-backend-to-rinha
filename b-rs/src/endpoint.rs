@@ -10,6 +10,11 @@ pub async fn post_payment(req_payment: Json<PaymentRequest>) -> impl Responder {
     HttpResponse::Ok()
 }
 
+#[post("/purge-payments")]
+pub async fn post_purge_payment() -> impl Responder {
+    HttpResponse::Ok()
+}
+
 #[get("/payments-summary")]
 pub async fn get_payments_summary(path_params: Option<Query<SummaryQuery>>) -> impl Responder {
     match path_params {
