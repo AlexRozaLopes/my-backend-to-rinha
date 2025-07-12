@@ -5,25 +5,40 @@ services:
     environment:
       - PAYMENT_PROCESSOR_DEFAULT=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_FALLBACK=http://payment-processor-fallback:8080
-    ports:
-      - "9999:9999"
     networks:
       - backend
       - payment-processor
+
   app-one:
     image: alexroza/b-rs
+    container_name: app-one
     environment:
       - LOAD_BALANCE=http://load-balance-rs:8081
     networks:
       - backend
       - payment-processor
+
   app-two:
     image: alexroza/b-rs
+    container_name: app-two
     environment:
       - LOAD_BALANCE=http://load-balance-rs:8081
     networks:
       - backend
       - payment-processor
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-lb
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "9999:9999"
+    depends_on:
+      - app-one
+      - app-two
+    networks:
+      - backend
 
 networks:
   backend:
