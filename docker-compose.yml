@@ -9,14 +9,14 @@ services:
       - backend
       - payment-processor
   app-one:
-    image: alexroza/b-rs:latest
+    image: alexroza/b-rs
     environment:
       - LOAD_BALANCE=http://load-balance-rs:8081
     networks:
       - backend
       - payment-processor
   app-two:
-    image: alexroza/b-rs:latest
+    image: alexroza/b-rs
     environment:
       - LOAD_BALANCE=http://load-balance-rs:8081
     networks:
