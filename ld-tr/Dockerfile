@@ -1,38 +1,36 @@
-# Stage 1: Build
-FROM rust:1.80-slim-bullseye AS builder
+# Etapa 1: Builder
+FROM rust:1.88.0-slim-bullseye AS builder
 
 WORKDIR /app
 
-# Instalar dependências para build
-RUN apt-get update && apt-get install -y libpq-dev && rm -rf /var/lib/apt/lists/*
+# Instala dependências necessárias para compilar crates como openssl, reqwest, etc.
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    build-essential \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists
 
-# Copiar arquivos de configuração e instalar dependências
+# Copia os arquivos do projeto
 COPY Cargo.toml Cargo.lock ./
-RUN cargo build --release
-
-# Copiar o código-fonte e compilar
 COPY src ./src
+
+# Compila o projeto em modo release
 RUN cargo build --release
 
-# Stage 2: Runtime
+# Etapa 2: Imagem final
 FROM debian:bullseye-slim
 
+# Instala certificados raiz do sistema
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Instalar dependências de runtime
-RUN apt-get update && apt-get install -y libpq5 && rm -rf /var/lib/apt/lists/*
-
-# Criar usuário não-root
-RUN useradd -m myuser
-USER myuser
-
-# Copiar o binário compilado
+# Copia o binário da etapa de build
 COPY --from=builder /app/target/release/ld-tr .
 
-# Expor a porta
-EXPOSE 9999
-
-# Configurar variável de ambiente (opcional, pode ser definida em tempo de execução)
 ENV PAYMENT_PROCESSOR_DEFAULT=http://localhost:8001
 ENV PAYMENT_PROCESSOR_FALLBACK=http://localhost:8002
 
