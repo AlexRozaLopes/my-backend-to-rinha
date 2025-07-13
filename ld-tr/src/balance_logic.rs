@@ -22,6 +22,7 @@ pub async fn call_payments(req: HttpRequest, mut body: web::Bytes) {
     if let Ok(parsed) = parsed {
         let response = PaymentResponse::new(parsed.correlation_id, parsed.amount);
         body = web::Bytes::from(serde_json::to_string(&response).unwrap());
+        println!("{:?}", body);
     }
 
     let base_url = if HEALTH_CHECK_DEFAULT.is_failed() {

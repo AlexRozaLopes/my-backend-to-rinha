@@ -5,8 +5,11 @@ use once_cell::sync::Lazy;
 use reqwest::Client;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::spawn;
+use tokio::time::sleep;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct QueueRequest {
     pub method: String,
     pub path: String,
@@ -54,7 +57,7 @@ pub async fn call_payments_from_queue(queue_req: &QueueRequest) {
 }
 
 pub fn start_queue_worker() {
-    tokio::spawn(async move {
+    spawn(async move {
         loop {
             let maybe_req = {
                 let mut queue = QUEUE.lock().unwrap();
@@ -62,7 +65,10 @@ pub fn start_queue_worker() {
             };
 
             if let Some(queue_req) = maybe_req {
+                println!("executando queue --> {:?}", queue_req);
                 call_payments_from_queue(&queue_req).await;
+            } else {
+                sleep(Duration::from_secs(10)).await;
             }
         }
     });
