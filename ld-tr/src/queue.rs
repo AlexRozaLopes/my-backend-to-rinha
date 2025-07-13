@@ -33,7 +33,7 @@ pub fn request_to_queue(req: &HttpRequest, body: web::Bytes) -> QueueRequest {
     }
 }
 
-pub async fn call_payments_from_queue(queue_req: &QueueRequest) {
+pub async fn call_payments_from_queue(queue_req: QueueRequest) {
     let client = Client::new();
 
     let base_url = if HEALTH_CHECK_DEFAULT.is_failed() {
@@ -72,7 +72,7 @@ pub fn start_queue_worker() {
 
             if let Some(queue_req) = maybe_req {
                 println!("executando queue --> {:?}", queue_req);
-                call_payments_from_queue(&queue_req).await;
+                call_payments_from_queue(queue_req).await;
             } else {
                 sleep(Duration::from_secs(5)).await;
             }
