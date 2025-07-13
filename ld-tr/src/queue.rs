@@ -16,6 +16,12 @@ pub struct QueueRequest {
     pub body: web::Bytes,
 }
 
+impl QueueRequest {
+    pub fn new(method: String, path: String, body: web::Bytes) -> Self {
+        Self { method, path, body }
+    }
+}
+
 pub static QUEUE: Lazy<Arc<Mutex<VecDeque<QueueRequest>>>> =
     Lazy::new(|| Arc::new(Mutex::new(VecDeque::new())));
 
