@@ -1,8 +1,9 @@
-use crate::check_health::HEALTH_CHECK;
 use actix_web::{HttpRequest, web};
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use std::env;
+use crate::check_health::{HEALTH_CHECK_DEFAULT, HEALTH_CHECK_FALLBACK};
+use crate::queue::{request_to_queue, QUEUE};
 
 pub static PAYMENT_PROCESSOR_DEFAULT: Lazy<String> = Lazy::new(|| {
     env::var("PAYMENT_PROCESSOR_DEFAULT").expect("PAYMENT_PROCESSOR_DEFAULT url not set")
@@ -15,7 +16,11 @@ pub static PAYMENT_PROCESSOR_FALLBACK: Lazy<String> = Lazy::new(|| {
 pub async fn call_payments(req: HttpRequest, body: web::Bytes) {
     let client = Client::new();
 
-    let base_url = if HEALTH_CHECK.is_failed() {
+    let base_url = if HEALTH_CHECK_DEFAULT.is_failed() {
+        if HEALTH_CHECK_FALLBACK.is_failed() {
+            QUEUE.lock().unwrap().push_back(request_to_queue(&req, body.clone()));
+            return;
+        }
         PAYMENT_PROCESSOR_FALLBACK.as_str()
     } else {
         PAYMENT_PROCESSOR_DEFAULT.as_str()
@@ -36,7 +41,6 @@ pub async fn call_payments(req: HttpRequest, body: web::Bytes) {
         Ok(res) => {println!("{:?}",res)}
         Err(_) => {
             println!("error ;-;");
-            HEALTH_CHECK.set_failed(false);
         }
     }
 }

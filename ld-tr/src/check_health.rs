@@ -28,39 +28,54 @@ impl CheckHealth {
     }
 }
 
-pub static HEALTH_CHECK: Lazy<Arc<CheckHealth>> = Lazy::new(|| Arc::new(CheckHealth::new()));
+pub static HEALTH_CHECK_DEFAULT: Lazy<Arc<CheckHealth>> =
+    Lazy::new(|| Arc::new(CheckHealth::new()));
+pub static HEALTH_CHECK_FALLBACK: Lazy<Arc<CheckHealth>> =
+    Lazy::new(|| Arc::new(CheckHealth::new()));
 
 #[derive(Serialize, Debug, Deserialize)]
 pub struct HealthResponse {
     pub failing: bool,
 }
 
-pub async fn verify_health() {
-    let url = format!("{}/payments/service-health", *PAYMENT_PROCESSOR_DEFAULT);
+pub async fn verify_health(srv: String) {
+    let url = format!("{}/payments/service-health", srv);
     let client = Client::new();
 
     match client.get(&url).send().await {
         Ok(res) => match res.json::<HealthResponse>().await {
             Ok(health) => {
-                HEALTH_CHECK.set_failed(health.failing);
+                if srv.eq(PAYMENT_PROCESSOR_DEFAULT.as_str()) {
+                    HEALTH_CHECK_DEFAULT.set_failed(health.failing);
+                } else {
+                    HEALTH_CHECK_FALLBACK.set_failed(health.failing);
+                }
                 println!("🔍 Health status atualizado: {:?}", health);
             }
             Err(e) => {
                 eprintln!("❌ Erro ao parsear JSON do health: {:?}", e);
-                HEALTH_CHECK.set_failed(true);
+                if srv.eq(PAYMENT_PROCESSOR_DEFAULT.as_str()) {
+                    HEALTH_CHECK_DEFAULT.set_failed(true);
+                } else {
+                    HEALTH_CHECK_FALLBACK.set_failed(true);
+                }
             }
         },
         Err(e) => {
             eprintln!("❌ Erro na requisição de health: {:?}", e);
-            HEALTH_CHECK.set_failed(true);
+            if srv.eq(PAYMENT_PROCESSOR_DEFAULT.as_str()) {
+                HEALTH_CHECK_DEFAULT.set_failed(true);
+            } else {
+                HEALTH_CHECK_FALLBACK.set_failed(true);
+            }
         }
     }
 }
 
-pub fn start_health_checker() {
+pub fn start_health_checker(srv: String) {
     spawn(async move {
         loop {
-            verify_health().await;
+            verify_health(srv.clone()).await;
             sleep(Duration::from_secs(5)).await;
         }
     });
