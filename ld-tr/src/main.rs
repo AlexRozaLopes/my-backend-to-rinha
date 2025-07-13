@@ -3,6 +3,7 @@ mod check_health;
 mod endpoint;
 mod info;
 mod queue;
+mod payment;
 
 use crate::check_health::start_health_checker;
 use crate::endpoint::{proxy_payment, proxy_payments_summary};

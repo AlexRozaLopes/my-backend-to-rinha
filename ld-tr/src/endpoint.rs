@@ -1,6 +1,6 @@
 use crate::balance_logic::call_payments;
-use actix_web::{HttpRequest, HttpResponse, Responder, get, web};
 use crate::info::call_payments_summary;
+use actix_web::{HttpRequest, HttpResponse, Responder, get, web};
 
 pub async fn proxy_payment(req: HttpRequest, body: web::Bytes) -> impl Responder {
     println!("{:?}", req);
