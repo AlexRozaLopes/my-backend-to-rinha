@@ -74,7 +74,7 @@ pub fn start_queue_worker() {
                 println!("executando queue --> {:?}", queue_req);
                 call_payments_from_queue(&queue_req).await;
             } else {
-                sleep(Duration::from_secs(10)).await;
+                sleep(Duration::from_secs(15)).await;
             }
         }
     });
