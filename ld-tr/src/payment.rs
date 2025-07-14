@@ -58,9 +58,8 @@ pub async fn payment(payment_req: PaymentRequest) {
 
     let full_url = format!("{}/payments", base_url);
 
-    // ⏱ Define um timeout de 3 segundos
     let result = timeout(
-        Duration::from_secs(3),
+        Duration::from_secs(6),
         client.post(&full_url).json(&response).send(),
     )
     .await;
@@ -82,7 +81,7 @@ pub async fn payment(payment_req: PaymentRequest) {
             .unwrap();
         }
         Err(_) => {
-            eprintln!("⏱ Timeout! A chamada demorou mais que 3 segundos.");
+            eprintln!("⏱ Timeout! A chamada demorou mais que 6 segundos.");
             let body: web::Bytes = web::Bytes::from(serde_json::to_string(&response).unwrap());
             enqueue(QueueRequest::new(
                 "POST".to_string(),

@@ -33,21 +33,15 @@ pub fn request_to_queue(req: &HttpRequest, body: web::Bytes) -> QueueRequest {
 pub async fn call_payments_from_queue(queue_req: QueueRequest) {
     let client = Client::new();
 
-    let base_url = match (
-        HEALTH_CHECK_DEFAULT.is_failed(),
-        HEALTH_CHECK_FALLBACK.is_failed(),
-    ) {
-        (true, true) => {
-            eprintln!("⚠️ Ambos os serviços estão fora! Reenfileirando...");
-            if let Err(e) = enqueue(queue_req.clone()).await {
-                eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
-            }
-            return;
+    if HEALTH_CHECK_DEFAULT.is_failed() {
+        eprintln!("⚠️ Serviço DEFAULT fora do ar! Reenfileirando...");
+        if let Err(e) = enqueue(queue_req.clone()).await {
+            eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
         }
-        (true, false) => PAYMENT_PROCESSOR_FALLBACK.as_str(),
-        _ => PAYMENT_PROCESSOR_DEFAULT.as_str(),
-    };
+        return;
+    }
 
+    let base_url = PAYMENT_PROCESSOR_DEFAULT.as_str();
     let full_url = format!("{}{}", base_url, queue_req.path);
 
     let method = queue_req
