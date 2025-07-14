@@ -19,7 +19,6 @@ pub async fn proxy_payments_summary(req: HttpRequest) -> impl Responder {
 
 #[post("/payments")]
 pub async fn post_payment(req_payment: Json<PaymentRequest>) -> impl Responder {
-    println!("{:?}", req_payment.clone());
     payment(req_payment.into_inner()).await;
     HttpResponse::Ok()
 }
