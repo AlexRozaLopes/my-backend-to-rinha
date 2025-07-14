@@ -38,7 +38,7 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
         HEALTH_CHECK_FALLBACK.is_failed(),
     ) {
         (true, true) => {
-            enqueue(queue_req); // reenfileira se ambos down
+            enqueue(queue_req);
             return;
         }
         (true, false) => PAYMENT_PROCESSOR_FALLBACK.as_str(),
@@ -68,7 +68,7 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
         Ok(res) => println!("✅ Request enviada: {} {}", method, res.status()),
         Err(e) => {
             eprintln!("❌ Falha ao enviar request: {:?}", e);
-            enqueue(queue_req); // reenfileira se a request falhar
+            enqueue(queue_req);
         }
     }
 }
@@ -84,7 +84,7 @@ fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
 }
 
 pub fn init_queue() {
-    let (tx, rx) = mpsc::channel::<QueueRequest>(100); // buffer de 100 itens
+    let (tx, rx) = mpsc::channel::<QueueRequest>(100);
     *QUEUE_SENDER.lock().unwrap() = Some(tx);
     start_queue_worker(rx);
 }
