@@ -91,7 +91,19 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
 fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
     tokio::spawn(async move {
         println!("Queue iniciada com sucesso!");
+
         while let Some(queue_req) = rx.recv().await {
+            if HEALTH_CHECK_DEFAULT.is_failed() {
+                eprintln!("🚫 Serviço DEFAULT está fora do ar! Aguardando para tentar novamente...");
+                tokio::time::sleep(Duration::from_secs(2)).await;
+
+                if let Err(e) = enqueue(queue_req).await {
+                    eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
+                }
+
+                continue;
+            }
+
             println!("👷 Executando queue --> {:?}", queue_req);
             call_payments_from_queue(queue_req).await;
         }
