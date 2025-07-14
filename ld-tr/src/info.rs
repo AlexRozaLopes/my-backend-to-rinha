@@ -11,6 +11,12 @@ pub struct Stats {
     pub total_amount: f64,
 }
 
+impl Stats {
+    pub fn new(total_requests: u64, total_amount: f64) -> Self {
+        Self { total_requests, total_amount }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Report {
     pub default: Stats,
@@ -43,8 +49,8 @@ pub async fn call_payments_summary(req: HttpRequest) -> impl Responder {
     request_builder_df = request_builder_df.header("X-Rinha-Token","123");
     request_builder_fb = request_builder_fb.header("X-Rinha-Token","123");
 
-    let info_df = request_builder_df.send().await.unwrap().json::<Stats>().await.unwrap();
-    let info_fb = request_builder_fb.send().await.unwrap().json::<Stats>().await.unwrap();
+    let info_df = request_builder_df.send().await.unwrap().json::<Stats>().await.unwrap_or_else(|_| Stats::new(0, 0f64));
+    let info_fb = request_builder_fb.send().await.unwrap().json::<Stats>().await.unwrap_or_else(|_| Stats::new(0, 0f64));
 
     let report = Report::new(info_df, info_fb);
 
