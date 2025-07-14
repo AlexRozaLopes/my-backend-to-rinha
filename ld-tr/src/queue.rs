@@ -1,12 +1,12 @@
-use crate::balance_logic::{PAYMENT_PROCESSOR_DEFAULT, PAYMENT_PROCESSOR_FALLBACK};
-use crate::check_health::{HEALTH_CHECK_DEFAULT, HEALTH_CHECK_FALLBACK};
+use crate::balance_logic::PAYMENT_PROCESSOR_DEFAULT;
+use crate::check_health::HEALTH_CHECK_DEFAULT;
 use actix_web::{HttpRequest, web};
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use std::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 #[derive(Clone, Debug)]
 pub struct QueueRequest {
     pub method: String,
@@ -81,7 +81,10 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
             }
         }
         Err(_) => {
-            eprintln!("⏱ Timeout! A chamada demorou mais que {}s", Duration::from_secs(3).as_secs());
+            eprintln!(
+                "⏱ Timeout! A chamada demorou mais que {}s",
+                Duration::from_secs(3).as_secs()
+            );
             if let Err(e) = enqueue(queue_req).await {
                 eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
             }
@@ -94,8 +97,10 @@ fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
 
         while let Some(queue_req) = rx.recv().await {
             if HEALTH_CHECK_DEFAULT.is_failed() {
-                eprintln!("🚫 Serviço DEFAULT está fora do ar! Aguardando para tentar novamente...");
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                eprintln!(
+                    "🚫 Serviço DEFAULT está fora do ar! Aguardando para tentar novamente..."
+                );
+                tokio::time::sleep(Duration::from_secs(7)).await;
 
                 if let Err(e) = enqueue(queue_req).await {
                     eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
