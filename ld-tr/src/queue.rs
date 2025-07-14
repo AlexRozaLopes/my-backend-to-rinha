@@ -6,7 +6,7 @@ use reqwest::Client;
 use std::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
-
+use tokio::time::{timeout, Duration};
 #[derive(Clone, Debug)]
 pub struct QueueRequest {
     pub method: String,
@@ -63,11 +63,13 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
 
     let request = client
         .request(method.clone(), &full_url)
-        .header("Content-Type", "application/json") // garante que seja JSON
+        .header("Content-Type", "application/json")
         .body(queue_req.body.clone());
 
-    match request.send().await {
-        Ok(res) => {
+    let result = timeout(Duration::from_secs(3), request.send()).await;
+
+    match result {
+        Ok(Ok(res)) => {
             println!("✅ Request enviada: {} {}", method, res.status());
 
             if !res.status().is_success() {
@@ -78,15 +80,20 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
                 }
             }
         }
-        Err(e) => {
-            eprintln!("❌ Erro ao enviar request: {:?}", e);
+        Ok(Err(e)) => {
+            eprintln!("❌ Erro na requisição: {:?}", e);
+            if let Err(e) = enqueue(queue_req).await {
+                eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
+            }
+        }
+        Err(_) => {
+            eprintln!("⏱ Timeout! A chamada demorou mais que {}s", Duration::from_secs(3).as_secs());
             if let Err(e) = enqueue(queue_req).await {
                 eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
             }
         }
     }
 }
-
 fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
     tokio::spawn(async move {
         println!("Queue iniciada com sucesso!");

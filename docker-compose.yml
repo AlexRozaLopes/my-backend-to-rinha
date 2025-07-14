@@ -4,11 +4,6 @@ services:
     environment:
       - PAYMENT_PROCESSOR_DEFAULT=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_FALLBACK=http://payment-processor-fallback:8080
-    deploy:
-      resources:
-        limits:
-          cpus: "0.6"
-          memory: "167MB"
     networks:
       - backend
       - payment-processor
@@ -18,11 +13,6 @@ services:
     environment:
       - PAYMENT_PROCESSOR_DEFAULT=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_FALLBACK=http://payment-processor-fallback:8080
-    deploy:
-      resources:
-        limits:
-          cpus: "0.6"
-          memory: "167MB"
     networks:
       - backend
       - payment-processor
@@ -39,12 +29,6 @@ services:
       - load-balance-two
     networks:
       - backend
-    deploy:
-      resources:
-        limits:
-          cpus: "0.3"
-          memory: "15MB"
-
 networks:
   backend:
     driver: bridge
