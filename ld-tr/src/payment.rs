@@ -1,6 +1,6 @@
 use crate::balance_logic::{PAYMENT_PROCESSOR_DEFAULT, PAYMENT_PROCESSOR_FALLBACK};
 use crate::check_health::{HEALTH_CHECK_DEFAULT, HEALTH_CHECK_FALLBACK};
-use crate::queue::{QUEUE, QueueRequest};
+use crate::queue::{QueueRequest, enqueue};
 use actix_web::web;
 use chrono::{DateTime, Utc};
 use reqwest::Client;
@@ -40,7 +40,7 @@ pub async fn payment(payment_req: PaymentRequest) {
         if HEALTH_CHECK_FALLBACK.is_failed() {
             let body: web::Bytes = web::Bytes::from(serde_json::to_string(&response).unwrap());
 
-            QUEUE.lock().unwrap().push_back(QueueRequest::new(
+            enqueue(QueueRequest::new(
                 "POST".to_string(),
                 "/payments".to_string(),
                 body,

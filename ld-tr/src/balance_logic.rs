@@ -1,5 +1,5 @@
 use crate::check_health::{HEALTH_CHECK_DEFAULT, HEALTH_CHECK_FALLBACK};
-use crate::queue::{QUEUE, request_to_queue};
+use crate::queue::{request_to_queue, enqueue};
 use actix_web::{HttpRequest, web};
 use once_cell::sync::Lazy;
 use reqwest::Client;
@@ -18,10 +18,7 @@ pub async fn call_payments(req: HttpRequest, body: web::Bytes) {
 
     let base_url = if HEALTH_CHECK_DEFAULT.is_failed() {
         if HEALTH_CHECK_FALLBACK.is_failed() {
-            QUEUE
-                .lock()
-                .unwrap()
-                .push_back(request_to_queue(&req, body.clone()));
+            enqueue(request_to_queue(&req, body.clone()));
             return;
         }
         PAYMENT_PROCESSOR_FALLBACK.as_str()
