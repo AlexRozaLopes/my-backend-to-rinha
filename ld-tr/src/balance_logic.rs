@@ -18,7 +18,7 @@ pub async fn call_payments(req: HttpRequest, body: web::Bytes) {
 
     let base_url = if HEALTH_CHECK_DEFAULT.is_failed() {
         if HEALTH_CHECK_FALLBACK.is_failed() {
-            enqueue(request_to_queue(&req, body.clone()));
+            enqueue(request_to_queue(&req, body.clone())).await.unwrap();
             return;
         }
         PAYMENT_PROCESSOR_FALLBACK.as_str()

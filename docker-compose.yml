@@ -8,7 +8,7 @@ services:
       resources:
         limits:
           cpus: "0.6"
-          memory: "120MB"
+          memory: "167MB"
     networks:
       - backend
       - payment-processor
@@ -22,7 +22,7 @@ services:
       resources:
         limits:
           cpus: "0.6"
-          memory: "120MB"
+          memory: "167MB"
     networks:
       - backend
       - payment-processor
@@ -43,7 +43,7 @@ services:
       resources:
         limits:
           cpus: "0.3"
-          memory: "100MB"
+          memory: "15MB"
 
 networks:
   backend:

@@ -38,7 +38,10 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
         HEALTH_CHECK_FALLBACK.is_failed(),
     ) {
         (true, true) => {
-            enqueue(queue_req);
+            eprintln!("⚠️ Ambos os serviços estão fora! Reenfileirando...");
+            if let Err(e) = enqueue(queue_req.clone()).await {
+                eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
+            }
             return;
         }
         (true, false) => PAYMENT_PROCESSOR_FALLBACK.as_str(),
@@ -58,17 +61,28 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
             reqwest::Method::GET
         });
 
-    let response = client
+    let request = client
         .request(method.clone(), &full_url)
-        .body(queue_req.body.clone())
-        .send()
-        .await;
+        .header("Content-Type", "application/json") // garante que seja JSON
+        .body(queue_req.body.clone());
 
-    match response {
-        Ok(res) => println!("✅ Request enviada: {} {}", method, res.status()),
+    match request.send().await {
+        Ok(res) => {
+            println!("✅ Request enviada: {} {}", method, res.status());
+
+            if !res.status().is_success() {
+                eprintln!("⚠️ Response com status inesperado: {}", res.status());
+
+                if let Err(e) = enqueue(queue_req.clone()).await {
+                    eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
+                }
+            }
+        }
         Err(e) => {
-            eprintln!("❌ Falha ao enviar request: {:?}", e);
-            enqueue(queue_req);
+            eprintln!("❌ Erro ao enviar request: {:?}", e);
+            if let Err(e) = enqueue(queue_req).await {
+                eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
+            }
         }
     }
 }
@@ -89,12 +103,15 @@ pub fn init_queue() {
     start_queue_worker(rx);
 }
 
-pub fn enqueue(req: QueueRequest) {
-    if let Some(sender) = &*QUEUE_SENDER.lock().unwrap() {
-        if let Err(e) = sender.try_send(req) {
-            eprintln!("❌ Fila cheia! Não foi possível enfileirar: {:?}", e);
-        }
+pub async fn enqueue(req: QueueRequest) -> Result<(), mpsc::error::SendError<QueueRequest>> {
+    let sender_opt = {
+        let guard = QUEUE_SENDER.lock().unwrap();
+        guard.clone()
+    };
+
+    if let Some(sender) = sender_opt {
+        sender.send(req).await
     } else {
-        eprintln!("❌ Sender ainda não foi inicializado.");
+        Err(mpsc::error::SendError(req))
     }
 }

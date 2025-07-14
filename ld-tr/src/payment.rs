@@ -44,7 +44,7 @@ pub async fn payment(payment_req: PaymentRequest) {
                 "POST".to_string(),
                 "/payments".to_string(),
                 body,
-            ));
+            )).await.unwrap();
             return;
         }
         PAYMENT_PROCESSOR_FALLBACK.as_str()
