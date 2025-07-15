@@ -116,7 +116,7 @@ fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
 }
 
 pub fn init_queue() {
-    let (tx, rx) = mpsc::channel::<QueueRequest>(2000);
+    let (tx, rx) = mpsc::channel::<QueueRequest>(1000);
     *QUEUE_SENDER.lock().unwrap() = Some(tx);
     start_queue_worker(rx);
 }
