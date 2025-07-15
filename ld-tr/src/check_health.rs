@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::spawn;
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
 
 pub struct CheckHealth {
     pub check_is_failed: AtomicBool,
@@ -42,8 +42,10 @@ pub async fn verify_health(srv: String) {
     let url = format!("{}/payments/service-health", srv);
     let client = Client::new();
 
-    match client.get(&url).send().await {
-        Ok(res) => match res.json::<HealthResponse>().await {
+    let result = timeout(Duration::from_secs(3), client.get(&url).send()).await;
+
+    match result {
+        Ok(Ok(res)) => match res.json::<HealthResponse>().await {
             Ok(health) => {
                 if srv.eq(PAYMENT_PROCESSOR_DEFAULT.as_str()) {
                     HEALTH_CHECK_DEFAULT.set_failed(health.failing);
@@ -61,8 +63,16 @@ pub async fn verify_health(srv: String) {
                 }
             }
         },
-        Err(e) => {
+        Ok(Err(e)) => {
             eprintln!("❌ Erro na requisição de health: {:?}", e);
+            if srv.eq(PAYMENT_PROCESSOR_DEFAULT.as_str()) {
+                HEALTH_CHECK_DEFAULT.set_failed(true);
+            } else {
+                HEALTH_CHECK_FALLBACK.set_failed(true);
+            }
+        }
+        Err(_) => {
+            eprintln!("⏰ Timeout: serviço {} demorou mais de 3s para responder", srv);
             if srv.eq(PAYMENT_PROCESSOR_DEFAULT.as_str()) {
                 HEALTH_CHECK_DEFAULT.set_failed(true);
             } else {
