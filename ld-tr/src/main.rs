@@ -7,10 +7,10 @@ mod queue;
 
 use crate::balance_logic::{PAYMENT_PROCESSOR_DEFAULT, PAYMENT_PROCESSOR_FALLBACK};
 use crate::check_health::start_health_checker;
-use crate::endpoint::{post_payment, proxy_payment, proxy_payments_summary};
-use actix_web::{App, HttpServer, web};
-use dotenvy::dotenv;
+use crate::endpoint::{post_payment, post_purge_payment, proxy_payments_summary};
 use crate::queue::init_queue;
+use actix_web::{App, HttpServer};
+use dotenvy::dotenv;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -23,7 +23,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .service(proxy_payments_summary)
             .service(post_payment)
-            .route("/{tail:.*}", web::to(proxy_payment))
+            .service(post_purge_payment)
     })
     .bind(("0.0.0.0", 8081))?
     .run()
