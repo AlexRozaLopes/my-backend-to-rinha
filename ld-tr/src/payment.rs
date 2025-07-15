@@ -1,7 +1,6 @@
-use crate::balance_logic::{PAYMENT_PROCESSOR_DEFAULT, PAYMENT_PROCESSOR_FALLBACK};
 use crate::check_health::{HEALTH_CHECK_DEFAULT, HEALTH_CHECK_FALLBACK};
-use crate::queue::{QueueRequest, enqueue};
-use actix_web::web;
+use crate::info::{PAYMENT_PROCESSOR_DEFAULT, PAYMENT_PROCESSOR_FALLBACK};
+use crate::queue::enqueue_payment;
 use chrono::{DateTime, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -40,15 +39,7 @@ pub async fn payment(payment_req: PaymentRequest) {
 
     let base_url = if HEALTH_CHECK_DEFAULT.is_failed() {
         if HEALTH_CHECK_FALLBACK.is_failed() {
-            let body: web::Bytes = web::Bytes::from(serde_json::to_string(&response).unwrap());
-
-            enqueue(QueueRequest::new(
-                "POST".to_string(),
-                "/payments".to_string(),
-                body,
-            ))
-            .await
-            .unwrap();
+            let _ = enqueue_payment(response.clone()).await;
             return;
         }
         PAYMENT_PROCESSOR_FALLBACK.as_str()
@@ -71,25 +62,11 @@ pub async fn payment(payment_req: PaymentRequest) {
         Ok(Err(e)) => {
             eprintln!("❌ Erro na requisição: {:?}", e);
 
-            let body: web::Bytes = web::Bytes::from(serde_json::to_string(&response).unwrap());
-            enqueue(QueueRequest::new(
-                "POST".to_string(),
-                "/payments".to_string(),
-                body,
-            ))
-            .await
-            .unwrap();
+            let _ = enqueue_payment(response.clone()).await;
         }
         Err(_) => {
             eprintln!("⏱ Timeout! A chamada demorou mais que 6 segundos.");
-            let body: web::Bytes = web::Bytes::from(serde_json::to_string(&response).unwrap());
-            enqueue(QueueRequest::new(
-                "POST".to_string(),
-                "/payments".to_string(),
-                body,
-            ))
-            .await
-            .unwrap();
+            let _ = enqueue_payment(response.clone()).await;
         }
     }
 }

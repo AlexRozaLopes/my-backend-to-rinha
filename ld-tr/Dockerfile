@@ -33,6 +33,7 @@ COPY --from=builder /app/target/release/ld-tr .
 
 ENV PAYMENT_PROCESSOR_DEFAULT=http://localhost:8001
 ENV PAYMENT_PROCESSOR_FALLBACK=http://localhost:8002
+ENV REDIS=redis://redis:6379/
 
 # Comando padrão
 CMD ["./ld-tr"]

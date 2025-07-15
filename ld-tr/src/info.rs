@@ -1,7 +1,8 @@
+use std::env;
 use actix_web::{HttpRequest, HttpResponse, Responder};
+use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use crate::balance_logic::{PAYMENT_PROCESSOR_DEFAULT, PAYMENT_PROCESSOR_FALLBACK};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Stats {
@@ -29,7 +30,15 @@ impl Report {
     }
 }
 
-pub async fn call_payments_summary(req: HttpRequest) -> impl Responder {
+pub static PAYMENT_PROCESSOR_DEFAULT: Lazy<String> = Lazy::new(|| {
+    env::var("PAYMENT_PROCESSOR_DEFAULT").expect("PAYMENT_PROCESSOR_DEFAULT url not set")
+});
+
+pub static PAYMENT_PROCESSOR_FALLBACK: Lazy<String> = Lazy::new(|| {
+    env::var("PAYMENT_PROCESSOR_FALLBACK").expect("PAYMENT_PROCESSOR_FALLBACK url not set")
+});
+
+pub async fn payments_summary(req: HttpRequest) -> impl Responder {
     let client = Client::new();
 
     let default_url = format!("{}/admin{}", *PAYMENT_PROCESSOR_DEFAULT, req.uri());

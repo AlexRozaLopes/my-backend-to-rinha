@@ -1,4 +1,3 @@
-use crate::balance_logic::PAYMENT_PROCESSOR_DEFAULT;
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -7,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::spawn;
 use tokio::time::{sleep, timeout};
+use crate::info::PAYMENT_PROCESSOR_DEFAULT;
 
 pub struct CheckHealth {
     pub check_is_failed: AtomicBool,

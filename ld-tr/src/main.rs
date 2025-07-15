@@ -1,23 +1,22 @@
-mod balance_logic;
 mod check_health;
 mod endpoint;
 mod info;
 mod payment;
 mod queue;
 
-use crate::balance_logic::{PAYMENT_PROCESSOR_DEFAULT, PAYMENT_PROCESSOR_FALLBACK};
 use crate::check_health::start_health_checker;
 use crate::endpoint::{post_payment, post_purge_payment, proxy_payments_summary};
-use crate::queue::init_queue;
+use crate::info::{PAYMENT_PROCESSOR_DEFAULT, PAYMENT_PROCESSOR_FALLBACK};
 use actix_web::{App, HttpServer};
 use dotenvy::dotenv;
+use crate::queue::start_payment_worker;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
     start_health_checker(PAYMENT_PROCESSOR_DEFAULT.to_string());
     start_health_checker(PAYMENT_PROCESSOR_FALLBACK.to_string());
-    init_queue();
-    dotenv().ok();
+    start_payment_worker(format!("{}/payments", PAYMENT_PROCESSOR_DEFAULT.to_string())).await;
 
     HttpServer::new(|| {
         App::new()

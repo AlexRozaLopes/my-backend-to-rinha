@@ -1,135 +1,59 @@
-use crate::balance_logic::PAYMENT_PROCESSOR_DEFAULT;
-use crate::check_health::HEALTH_CHECK_DEFAULT;
-use actix_web::{HttpRequest, web};
+use crate::payment::PaymentResponse;
 use once_cell::sync::Lazy;
+use redis::AsyncTypedCommands;
 use reqwest::Client;
-use std::sync::Mutex;
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::time::{Duration, timeout};
-#[derive(Clone, Debug)]
-pub struct QueueRequest {
-    pub method: String,
-    pub path: String,
-    pub body: web::Bytes,
+use std::env;
+use std::time::Duration;
+use tokio::time::sleep;
+use crate::check_health::HEALTH_CHECK_DEFAULT;
+
+static QUEUE_NAME: &str = "payment_queue";
+static REDIS_CLIENT: Lazy<redis::Client> = Lazy::new(|| {
+    let redis_url = env::var("REDIS").unwrap_or_else(|_| "redis://localhost:6379/".to_string());
+    redis::Client::open(redis_url).expect("Erro ao criar cliente Redis")
+});
+
+pub async fn enqueue_payment(response: PaymentResponse) -> redis::RedisResult<()> {
+    let mut conn = REDIS_CLIENT.get_multiplexed_tokio_connection().await?;
+    let json = serde_json::to_string(&response).unwrap();
+    conn.lpush(QUEUE_NAME, json).await?;
+    Ok(())
 }
 
-impl QueueRequest {
-    pub fn new(method: String, path: String, body: web::Bytes) -> Self {
-        Self { method, path, body }
-    }
-}
+async fn dequeue_and_post(endpoint: String) -> redis::RedisResult<()> {
+    let mut conn = REDIS_CLIENT.get_multiplexed_tokio_connection().await?;
+    let maybe_json: Option<String> = conn.rpop(QUEUE_NAME, None).await?;
 
-static QUEUE_SENDER: Lazy<Mutex<Option<Sender<QueueRequest>>>> = Lazy::new(|| Mutex::new(None));
+    if let Some(json) = maybe_json {
+        let parsed: PaymentResponse = serde_json::from_str(&json).unwrap();
 
-pub fn request_to_queue(req: &HttpRequest, body: web::Bytes) -> QueueRequest {
-    QueueRequest {
-        method: req.method().to_string(),
-        path: req.path().to_string(),
-        body,
-    }
-}
-
-pub async fn call_payments_from_queue(queue_req: QueueRequest) {
-    let client = Client::new();
-
-    if HEALTH_CHECK_DEFAULT.is_failed() {
-        eprintln!("⚠️ Serviço DEFAULT fora do ar! Reenfileirando...");
-        if let Err(e) = enqueue(queue_req.clone()).await {
-            eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
+        let http_client = Client::new();
+        if HEALTH_CHECK_DEFAULT.is_failed() {
+            return Ok(());
         }
-        return;
-    }
+        let res = http_client.post(endpoint).json(&parsed).send().await;
 
-    let base_url = PAYMENT_PROCESSOR_DEFAULT.as_str();
-    let full_url = format!("{}{}", base_url, queue_req.path);
-
-    let method = queue_req
-        .method
-        .parse::<reqwest::Method>()
-        .unwrap_or_else(|_| {
-            eprintln!(
-                "❌ Método HTTP inválido '{}', usando GET como fallback",
-                queue_req.method
-            );
-            reqwest::Method::GET
-        });
-
-    let request = client
-        .request(method.clone(), &full_url)
-        .header("Content-Type", "application/json")
-        .body(queue_req.body.clone());
-
-    let result = timeout(Duration::from_secs(3), request.send()).await;
-
-    match result {
-        Ok(Ok(res)) => {
-            println!("✅ Request enviada: {} {}", method, res.status());
-
-            if !res.status().is_success() {
-                eprintln!("⚠️ Response com status inesperado: {}", res.status());
-
-                if let Err(e) = enqueue(queue_req.clone()).await {
-                    eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
-                }
+        match res {
+            Ok(response) => {
+                println!("✅ POST feito com status: {}", response.status());
+            }
+            Err(err) => {
+                eprintln!("❌ Erro no POST: {}", err);
+                conn.rpush(QUEUE_NAME, json).await?;
             }
         }
-        Ok(Err(e)) => {
-            eprintln!("❌ Erro na requisição: {:?}", e);
-            if let Err(e) = enqueue(queue_req).await {
-                eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
-            }
-        }
-        Err(_) => {
-            eprintln!(
-                "⏱ Timeout! A chamada demorou mais que {}s",
-                Duration::from_secs(3).as_secs()
-            );
-            if let Err(e) = enqueue(queue_req).await {
-                eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
-            }
-        }
-    }
-}
-fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
-    tokio::spawn(async move {
-        println!("Queue iniciada com sucesso!");
-
-        while let Some(queue_req) = rx.recv().await {
-            if HEALTH_CHECK_DEFAULT.is_failed() {
-                eprintln!(
-                    "🚫 Serviço DEFAULT está fora do ar! Aguardando para tentar novamente..."
-                );
-                tokio::time::sleep(Duration::from_secs(5)).await;
-
-                if let Err(e) = enqueue(queue_req).await {
-                    eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
-                }
-
-                continue;
-            }
-
-            println!("👷 Executando queue --> {:?}", queue_req);
-            call_payments_from_queue(queue_req).await;
-        }
-    });
-}
-
-pub fn init_queue() {
-    let (tx, rx) = mpsc::channel::<QueueRequest>(1000);
-    *QUEUE_SENDER.lock().unwrap() = Some(tx);
-    start_queue_worker(rx);
-}
-
-pub async fn enqueue(req: QueueRequest) -> Result<(), mpsc::error::SendError<QueueRequest>> {
-    let sender_opt = {
-        let guard = QUEUE_SENDER.lock().unwrap();
-        guard.clone()
-    };
-
-    if let Some(sender) = sender_opt {
-        sender.send(req).await
     } else {
-        Err(mpsc::error::SendError(req))
+        println!("⚠️ Fila vazia, nada para processar.");
+    }
+
+    Ok(())
+}
+
+pub async fn start_payment_worker(endpoint: String) {
+    loop {
+        if let Err(e) = dequeue_and_post(endpoint.clone()).await {
+            eprintln!("Erro no worker: {}", e);
+        }
+        sleep(Duration::from_secs(1)).await;
     }
 }

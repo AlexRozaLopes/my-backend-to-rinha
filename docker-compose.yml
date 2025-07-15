@@ -7,6 +7,8 @@ services:
     networks:
       - backend
       - payment-processor
+    depends_on:
+      - redis
 
   load-balance-two:
     image: alexroza/ld-tr
@@ -16,6 +18,8 @@ services:
     networks:
       - backend
       - payment-processor
+    depends_on:
+      - redis
 
   nginx:
     image: nginx:alpine
@@ -29,6 +33,9 @@ services:
       - load-balance-two
     networks:
       - backend
+  redis:
+    container_name: redis
+    image: redis:8-alpine
 networks:
   backend:
     driver: bridge

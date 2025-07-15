@@ -1,12 +1,11 @@
-use crate::info::call_payments_summary;
+use crate::info::payments_summary;
 use crate::payment::{PaymentRequest, payment};
 use actix_web::web::Json;
 use actix_web::{HttpRequest, HttpResponse, Responder, get, post};
 
 #[get("/payments-summary")]
 pub async fn proxy_payments_summary(req: HttpRequest) -> impl Responder {
-    println!("{:?}", req);
-    call_payments_summary(req).await
+    payments_summary(req).await
 }
 
 #[post("/payments")]
