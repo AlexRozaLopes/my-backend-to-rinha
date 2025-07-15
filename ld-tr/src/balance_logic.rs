@@ -1,5 +1,3 @@
-use crate::check_health::{HEALTH_CHECK_DEFAULT, HEALTH_CHECK_FALLBACK};
-use crate::queue::{request_to_queue, enqueue};
 use actix_web::{HttpRequest, web};
 use once_cell::sync::Lazy;
 use reqwest::Client;
@@ -16,17 +14,7 @@ pub static PAYMENT_PROCESSOR_FALLBACK: Lazy<String> = Lazy::new(|| {
 pub async fn call_payments(req: HttpRequest, body: web::Bytes) {
     let client = Client::new();
 
-    let base_url = if HEALTH_CHECK_DEFAULT.is_failed() {
-        if HEALTH_CHECK_FALLBACK.is_failed() {
-            enqueue(request_to_queue(&req, body.clone())).await.unwrap();
-            return;
-        }
-        PAYMENT_PROCESSOR_FALLBACK.as_str()
-    } else {
-        PAYMENT_PROCESSOR_DEFAULT.as_str()
-    };
-
-    let full_url = format!("{}{}", base_url, req.uri());
+    let full_url = format!("{}{}", PAYMENT_PROCESSOR_DEFAULT.as_str(), req.uri());
 
     let method = req.method().to_string().parse::<reqwest::Method>().unwrap();
     let mut request_builder = client.request(method, full_url);

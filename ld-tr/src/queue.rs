@@ -1,6 +1,5 @@
 use crate::balance_logic::PAYMENT_PROCESSOR_DEFAULT;
-use crate::check_health::HEALTH_CHECK_DEFAULT;
-use actix_web::{HttpRequest, web};
+use actix_web::web;
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use std::sync::Mutex;
@@ -22,24 +21,8 @@ impl QueueRequest {
 
 static QUEUE_SENDER: Lazy<Mutex<Option<Sender<QueueRequest>>>> = Lazy::new(|| Mutex::new(None));
 
-pub fn request_to_queue(req: &HttpRequest, body: web::Bytes) -> QueueRequest {
-    QueueRequest {
-        method: req.method().to_string(),
-        path: req.path().to_string(),
-        body,
-    }
-}
-
 pub async fn call_payments_from_queue(queue_req: QueueRequest) {
     let client = Client::new();
-
-    if HEALTH_CHECK_DEFAULT.is_failed() {
-        eprintln!("⚠️ Serviço DEFAULT fora do ar! Reenfileirando...");
-        if let Err(e) = enqueue(queue_req.clone()).await {
-            eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
-        }
-        return;
-    }
 
     let base_url = PAYMENT_PROCESSOR_DEFAULT.as_str();
     let full_url = format!("{}{}", base_url, queue_req.path);
@@ -60,7 +43,7 @@ pub async fn call_payments_from_queue(queue_req: QueueRequest) {
         .header("Content-Type", "application/json")
         .body(queue_req.body.clone());
 
-    let result = timeout(Duration::from_secs(3), request.send()).await;
+    let result = timeout(Duration::from_secs(2), request.send()).await;
 
     match result {
         Ok(Ok(res)) => {
@@ -96,19 +79,6 @@ fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
         println!("Queue iniciada com sucesso!");
 
         while let Some(queue_req) = rx.recv().await {
-            if HEALTH_CHECK_DEFAULT.is_failed() {
-                eprintln!(
-                    "🚫 Serviço DEFAULT está fora do ar! Aguardando para tentar novamente..."
-                );
-                tokio::time::sleep(Duration::from_secs(10)).await;
-
-                if let Err(e) = enqueue(queue_req).await {
-                    eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
-                }
-
-                continue;
-            }
-
             println!("👷 Executando queue --> {:?}", queue_req);
             call_payments_from_queue(queue_req).await;
         }
