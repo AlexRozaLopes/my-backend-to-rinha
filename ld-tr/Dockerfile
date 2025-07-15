@@ -1,30 +1,26 @@
-# Etapa 1: Builder
-FROM rust:1.88.0-slim-bullseye AS builder
+FROM rust:1.88-slim AS builder
 
-WORKDIR /app
-
-# Instala dependências necessárias para compilar crates como openssl, reqwest, etc.
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     build-essential \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists
+    && rm -rf /var/lib/apt/lists/*
 
-# Copia os arquivos do projeto
+
+WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
-COPY src ./src
 
-# Compila o projeto em modo release
+RUN mkdir src && echo 'fn main() {}' > src/main.rs
+
 RUN cargo build --release
 
-# Etapa 2: Imagem final
-FROM debian:bullseye-slim
+COPY src src
 
-# Instala certificados raiz do sistema
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN touch src/main.rs
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y libssl3 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

@@ -49,11 +49,14 @@ async fn dequeue_and_post(endpoint: String) -> redis::RedisResult<()> {
     Ok(())
 }
 
-pub async fn start_payment_worker(endpoint: String) {
-    loop {
-        if let Err(e) = dequeue_and_post(endpoint.clone()).await {
-            eprintln!("Erro no worker: {}", e);
+pub fn start_payment_worker(endpoint: String) {
+    tokio::spawn(async move {
+        loop {
+            if let Err(e) = dequeue_and_post(endpoint.clone()).await {
+                eprintln!("Erro no worker: {}", e);
+            }
+            sleep(Duration::from_secs(1)).await;
         }
-        sleep(Duration::from_secs(1)).await;
-    }
+                
+    });
 }
