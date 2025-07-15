@@ -100,7 +100,7 @@ fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
                 eprintln!(
                     "🚫 Serviço DEFAULT está fora do ar! Aguardando para tentar novamente..."
                 );
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                tokio::time::sleep(Duration::from_secs(5)).await;
 
                 if let Err(e) = enqueue(queue_req).await {
                     eprintln!("❌ Falha ao reenfileirar request: {:?}", e);

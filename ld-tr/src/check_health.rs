@@ -86,7 +86,7 @@ pub fn start_health_checker(srv: String) {
     spawn(async move {
         loop {
             verify_health(srv.clone()).await;
-            sleep(Duration::from_secs(10)).await;
+            sleep(Duration::from_secs(5)).await;
         }
     });
 }
