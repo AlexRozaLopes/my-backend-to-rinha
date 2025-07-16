@@ -58,6 +58,9 @@ pub async fn payment(payment_req: PaymentRequest) {
     match result {
         Ok(Ok(res)) => {
             println!("✅ Pagamento enviado com status: {}", res.status());
+            if !res.status().is_success() {
+                let _ = enqueue_payment(response.clone()).await;
+            }
         }
         Ok(Err(e)) => {
             eprintln!("❌ Erro na requisição: {:?}", e);
