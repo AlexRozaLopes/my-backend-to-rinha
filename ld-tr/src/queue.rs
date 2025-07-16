@@ -6,7 +6,7 @@ use reqwest::Client;
 use std::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::time::{Duration, timeout};
+use tokio::time::{Duration, timeout, sleep};
 #[derive(Clone, Debug)]
 pub struct QueueRequest {
     pub method: String,
@@ -106,17 +106,19 @@ fn start_queue_worker(mut rx: Receiver<QueueRequest>) {
                     eprintln!("❌ Falha ao reenfileirar request: {:?}", e);
                 }
 
+                sleep(Duration::from_secs(1)).await;
                 continue;
             }
 
             println!("👷 Executando queue --> {:?}", queue_req);
             call_payments_from_queue(queue_req).await;
+            sleep(Duration::from_secs(1)).await;
         }
     });
 }
 
 pub fn init_queue() {
-    let (tx, rx) = mpsc::channel::<QueueRequest>(1000);
+    let (tx, rx) = mpsc::channel::<QueueRequest>(2000);
     *QUEUE_SENDER.lock().unwrap() = Some(tx);
     start_queue_worker(rx);
 }

@@ -67,6 +67,16 @@ pub async fn payment(payment_req: PaymentRequest) {
     match result {
         Ok(Ok(res)) => {
             println!("✅ Pagamento enviado com status: {}", res.status());
+            if res.status().is_success() {
+                let body: web::Bytes = web::Bytes::from(serde_json::to_string(&response).unwrap());
+                enqueue(QueueRequest::new(
+                    "POST".to_string(),
+                    "/payments".to_string(),
+                    body,
+                ))
+                    .await
+                    .unwrap();
+            }
         }
         Ok(Err(e)) => {
             eprintln!("❌ Erro na requisição: {:?}", e);
