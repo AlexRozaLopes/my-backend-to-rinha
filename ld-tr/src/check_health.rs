@@ -72,7 +72,7 @@ pub async fn verify_health(srv: String) {
             }
         }
         Err(_) => {
-            eprintln!("⏰ Timeout: serviço {} demorou mais de 3s para responder", srv);
+            eprintln!("⏰ Timeout: serviço {} demorou mais de 3s", srv);
             if srv.eq(PAYMENT_PROCESSOR_DEFAULT.as_str()) {
                 HEALTH_CHECK_DEFAULT.set_failed(true);
             } else {
