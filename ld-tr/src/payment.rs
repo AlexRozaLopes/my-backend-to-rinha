@@ -50,7 +50,7 @@ pub async fn payment(payment_req: PaymentRequest) {
     let full_url = format!("{}/payments", base_url);
 
     let result = timeout(
-        Duration::from_secs(3),
+        Duration::from_secs(2),
         client.post(&full_url).json(&response).send(),
     )
     .await;
@@ -68,7 +68,7 @@ pub async fn payment(payment_req: PaymentRequest) {
             let _ = enqueue_payment(response.clone()).await;
         }
         Err(_) => {
-            eprintln!("⏱ Timeout! A chamada demorou mais que 3 segundos.");
+            eprintln!("⏱ Timeout! A chamada demorou mais que 2 segundos.");
             let _ = enqueue_payment(response.clone()).await;
         }
     }
