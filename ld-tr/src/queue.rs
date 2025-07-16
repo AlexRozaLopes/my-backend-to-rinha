@@ -36,6 +36,10 @@ async fn dequeue_and_post(endpoint: String) -> redis::RedisResult<()> {
         match res {
             Ok(response) => {
                 println!("✅ POST feito com status: {}", response.status());
+                if !response.status().is_success() {
+                    eprintln!("❌ Erro no POST");
+                    conn.rpush(QUEUE_NAME, json).await?;
+                }
             }
             Err(err) => {
                 eprintln!("❌ Erro no POST: {}", err);

@@ -42,7 +42,7 @@ pub async fn verify_health(srv: String) {
     let url = format!("{}/payments/service-health", srv);
     let client = Client::new();
 
-    let result = timeout(Duration::from_secs(3), client.get(&url).send()).await;
+    let result = timeout(Duration::from_secs(5), client.get(&url).send()).await;
 
     match result {
         Ok(Ok(res)) => match res.json::<HealthResponse>().await {
@@ -72,7 +72,7 @@ pub async fn verify_health(srv: String) {
             }
         }
         Err(_) => {
-            eprintln!("⏰ Timeout: serviço {} demorou mais de 3s", srv);
+            eprintln!("⏰ Timeout: serviço {} demorou mais de 5s", srv);
             if srv.eq(PAYMENT_PROCESSOR_DEFAULT.as_str()) {
                 HEALTH_CHECK_DEFAULT.set_failed(true);
             } else {
