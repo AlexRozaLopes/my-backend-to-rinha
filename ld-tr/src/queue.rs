@@ -3,7 +3,6 @@ use once_cell::sync::Lazy;
 use redis::AsyncTypedCommands;
 use reqwest::Client;
 use std::env;
-use std::time::Duration;
 use tokio::time::sleep;
 use crate::check_health::HEALTH_CHECK_DEFAULT;
 
@@ -20,6 +19,8 @@ pub async fn enqueue_payment(response: PaymentResponse) -> redis::RedisResult<()
     Ok(())
 }
 
+use tokio::time::{timeout, Duration};
+
 async fn dequeue_and_post(endpoint: String) -> redis::RedisResult<()> {
     let mut conn = REDIS_CLIENT.get_multiplexed_tokio_connection().await?;
     let maybe_json: Option<String> = conn.rpop(QUEUE_NAME, None).await?;
@@ -27,22 +28,31 @@ async fn dequeue_and_post(endpoint: String) -> redis::RedisResult<()> {
     if let Some(json) = maybe_json {
         let parsed: PaymentResponse = serde_json::from_str(&json).unwrap();
 
-        let http_client = Client::new();
         if HEALTH_CHECK_DEFAULT.is_failed() {
+            conn.rpush(QUEUE_NAME, json).await?;
             return Ok(());
         }
-        let res = http_client.post(endpoint).json(&parsed).send().await;
 
-        match res {
-            Ok(response) => {
+        let http_client = Client::new();
+
+        let result = timeout(Duration::from_secs(1), async {
+            http_client.post(endpoint).json(&parsed).send().await
+        }).await;
+
+        match result {
+            Ok(Ok(response)) => {
                 println!("✅ POST feito com status: {}", response.status());
                 if !response.status().is_success() {
-                    eprintln!("❌ Erro no POST");
+                    eprintln!("❌ Erro no processamento da fila");
                     conn.rpush(QUEUE_NAME, json).await?;
                 }
             }
-            Err(err) => {
-                eprintln!("❌ Erro no POST: {}", err);
+            Ok(Err(err)) => {
+                eprintln!("❌ Erro na requisição: {}", err);
+                conn.rpush(QUEUE_NAME, json).await?;
+            }
+            Err(_) => {
+                eprintln!("⏰ Timeout! POST demorou mais de 1 segundo");
                 conn.rpush(QUEUE_NAME, json).await?;
             }
         }
