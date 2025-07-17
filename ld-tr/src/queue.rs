@@ -22,16 +22,16 @@ pub async fn enqueue_payment(response: PaymentResponse) -> redis::RedisResult<()
 use tokio::time::{timeout, Duration};
 
 async fn dequeue_and_post(endpoint: String) -> redis::RedisResult<()> {
+    if HEALTH_CHECK_DEFAULT.is_failed() {
+        println!("⚠️ Payment Process off");
+        return Ok(());
+    }
     let mut conn = REDIS_CLIENT.get_multiplexed_tokio_connection().await?;
     let maybe_json: Option<String> = conn.rpop(QUEUE_NAME, None).await?;
 
     if let Some(json) = maybe_json {
         let parsed: PaymentResponse = serde_json::from_str(&json).unwrap();
 
-        if HEALTH_CHECK_DEFAULT.is_failed() {
-            conn.rpush(QUEUE_NAME, json).await?;
-            return Ok(());
-        }
 
         let http_client = Client::new();
 
